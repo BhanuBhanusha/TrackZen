@@ -62,6 +62,6 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
     console.log(`\n==================================================`);
     console.log(` TrackZen Frontend is running on: http://localhost:${PORT}`);
-    console.log(` Connecting to backend API on: http://localhost:8080/api`);
+    console.log(` Connecting to backend API on: https://trackzen-backend-y8wx.onrender.com/api`);
     console.log(`==================================================\n`);
 });
