@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackZen | Enterprise Support & SLA Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Notification Toasts -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- ================= AUTH VIEW ================= -->
+    <div id="authContainer" class="auth-wrapper">
+        <div class="auth-card">
+            <div class="brand-header">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <h1 class="brand-title">TrackZen</h1>
+                <p class="brand-subtitle">Smart Ticket Resolution & SLA Monitoring Engine</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button type="button" id="tabLoginBtn" class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+                <button type="button" id="tabRegisterBtn" class="auth-tab" onclick="switchAuthTab('register')">Create Account</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="name@company.com" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="loginSubmitBtn">
+                    <span>Sign In</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form hidden" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="regFullName">Full Name</label>
+                    <input type="text" id="regFullName" placeholder="e.g. John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Email Address</label>
+                    <input type="email" id="regEmail" placeholder="name@company.com" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Password</label>
+                    <input type="password" id="regPassword" placeholder="Minimum 6 characters" required autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="regRole">Role Designation</label>
+                    <select id="regRole" required>
+                        <option value="ROLE_CUSTOMER">Customer (Submits & Tracks Tickets)</option>
+                        <option value="ROLE_SUPPORT_AGENT">Support Agent (Resolves & Works on Tickets)</option>
+                        <option value="ROLE_SUPERVISOR">Supervisor (Workload, Assignment & Escalation)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="registerSubmitBtn">
+                    <span>Create Account</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MAIN APP VIEW ================= -->
+    <div id="appContainer" class="app-layout hidden">
+        <!-- Top Navigation Bar -->
+        <header class="app-navbar">
+            <div class="nav-left">
+                <div class="nav-brand">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    <span>TrackZen</span>
+                </div>
+            </div>
+
+            <!-- Role Nav Tabs -->
+            <nav class="nav-links">
+                <button class="nav-tab active" data-view="dashboard" onclick="switchNavView('dashboard')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-tab" data-view="tickets" onclick="switchNavView('tickets')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    <span>Tickets</span>
+                </button>
+                <button class="nav-tab" data-view="sla-risk" id="navSlaTab" onclick="switchNavView('sla-risk')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>SLA Risk (<span id="slaRiskCountNav">0</span>)</span>
+                </button>
+                <button class="nav-tab supervisor-only" data-view="agents" id="navAgentsTab" onclick="switchNavView('agents')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Agent Capacity</span>
+                </button>
+                <button class="nav-tab supervisor-only" data-view="escalations" id="navEscalationsTab" onclick="switchNavView('escalations')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    <span>Escalations</span>
+                </button>
+            </nav>
+
+            <!-- User Menu -->
+            <div class="nav-right">
+                <div class="user-chip">
+                    <div class="avatar" id="userAvatar">U</div>
+                    <div class="user-meta">
+                        <span class="user-name" id="userNameLabel">User Name</span>
+                        <span class="user-role-badge" id="userRoleBadge">ROLE</span>
+                    </div>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="logout()" title="Logout">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="app-main">
+            <!-- Hero / Header Action Row -->
+            <div class="view-header">
+                <div>
+                    <h2 class="view-title" id="viewHeaderTitle">Support Tickets Hub</h2>
+                    <p class="view-desc" id="viewHeaderDesc">Monitor, resolve, and escalate support requests seamlessly</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary customer-only" onclick="openCreateTicketModal()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>New Ticket</span>
+                    </button>
+                    <button class="btn btn-outline" onclick="refreshCurrentView()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        <span>Refresh</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- VIEW 0: DASHBOARD VIEW (ONLY PAGE DISPLAYING THE DASHBOARD STATS & OVERVIEW) -->
+            <section id="viewDashboard" class="tab-view active">
+                <!-- Statistics Grid -->
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Tickets</span>
+                            <div class="stat-icon icon-blue">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="statTotal">0</div>
+                        <div class="stat-sub">Across all categories</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Open Tickets</span>
+                            <div class="stat-icon icon-yellow">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="statOpen">0</div>
+                        <div class="stat-sub">Awaiting assignment / triage</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">In Progress</span>
+                            <div class="stat-icon icon-indigo">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="statInProgress">0</div>
+                        <div class="stat-sub">Currently with agents</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Escalated</span>
+                            <div class="stat-icon icon-red">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="statEscalated">0</div>
+                        <div class="stat-sub">Priority attention required</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Resolved</span>
+                            <div class="stat-icon icon-green">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="statResolved">0</div>
+                        <div class="stat-sub">Customer verified resolutions</div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Section in Dashboard -->
+                <div class="dashboard-activity-card">
+                    <div class="dashboard-section-header">
+                        <div>
+                            <h3 style="font-size:1.15rem;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Recent Support Activity</h3>
+                            <p style="font-size:0.83rem;color:var(--text-muted);">Quick snapshot of tickets and SLA priorities</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="switchNavView('tickets')">
+                            <span>Go to Tickets Hub &rarr;</span>
+                        </button>
+                    </div>
+                    <div id="dashboardRecentTicketsList" class="tickets-grid"></div>
+                    <div id="dashboardEmptyState" class="empty-state hidden">
+                        <div class="empty-icon">&#128203;</div>
+                        <h3>No Active Tickets</h3>
+                        <p>Tickets created or assigned will appear here in the dashboard overview.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 1: TICKETS VIEW -->
+            <section id="viewTickets" class="tab-view hidden">
+                <div class="filter-bar">
+                    <div class="search-input-wrap">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="ticketSearchInput" placeholder="Search by ticket title, description, or #ID..." oninput="filterTickets()">
+                    </div>
+                    <div class="filter-controls">
+                        <select id="filterStatus" onchange="filterTickets()">
+                            <option value="ALL">All Statuses</option>
+                            <option value="OPEN">OPEN</option>
+                            <option value="IN_PROGRESS">IN_PROGRESS</option>
+                            <option value="ESCALATED">ESCALATED</option>
+                            <option value="RESOLVED">RESOLVED</option>
+                            <option value="CLOSED">CLOSED</option>
+                        </select>
+                        <select id="filterPriority" onchange="filterTickets()">
+                            <option value="ALL">All Priorities</option>
+                            <option value="CRITICAL">CRITICAL (4h SLA)</option>
+                            <option value="HIGH">HIGH (12h SLA)</option>
+                            <option value="MEDIUM">MEDIUM (24h SLA)</option>
+                            <option value="LOW">LOW (72h SLA)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="ticket-grid" id="ticketsList">
+                    <!-- Dynamic Ticket Cards -->
+                </div>
+                <div id="ticketsEmptyState" class="empty-state hidden">
+                    <div class="empty-icon">📂</div>
+                    <h3>No tickets found</h3>
+                    <p>There are currently no tickets matching your filter criteria.</p>
+                </div>
+            </section>
+
+            <!-- VIEW 2: SLA RISK VIEW -->
+            <section id="viewSlaRisk" class="tab-view hidden">
+                <div class="alert-banner">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <div>
+                        <strong>SLA Breach Warning Window (Next 24 Hours)</strong>
+                        <p>These active tickets require immediate triage or resolution before violating service-level agreements.</p>
+                    </div>
+                </div>
+                <div class="ticket-grid" id="slaRiskList"></div>
+                <div id="slaRiskEmptyState" class="empty-state hidden">
+                    <div class="empty-icon">🛡️</div>
+                    <h3>Zero SLA Risks!</h3>
+                    <p>All active tickets are comfortably within their respective SLA resolution deadlines.</p>
+                </div>
+            </section>
+
+            <!-- VIEW 3: AGENTS VIEW (Supervisor) -->
+            <section id="viewAgents" class="tab-view hidden">
+                <div class="section-intro">
+                    <div>
+                        <h3>Support Agent Fleet & Live Workload</h3>
+                        <p>Real-time capacity tracking relative to maximum assigned limits (Auto-load calculation).</p>
+                    </div>
+                </div>
+                <div class="agents-grid" id="agentsList"></div>
+            </section>
+
+            <!-- VIEW 4: ESCALATIONS VIEW (Supervisor & Agent) -->
+            <section id="viewEscalations" class="tab-view hidden">
+                <div class="section-intro">
+                    <div>
+                        <h3>Escalated Ticket Queue</h3>
+                        <p>Tickets escalated up to Level 3. Resolving returns the ticket to active <code>IN_PROGRESS</code>.</p>
+                    </div>
+                    <div class="filter-controls">
+                        <button class="pill-btn active" id="btnFilterUnresolvedEsc" onclick="toggleEscalationFilter(true)">Unresolved Only</button>
+                        <button class="pill-btn" id="btnFilterAllEsc" onclick="toggleEscalationFilter(false)">All History</button>
+                    </div>
+                </div>
+                <div class="escalations-table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Ticket</th>
+                                <th>Level</th>
+                                <th>Reason</th>
+                                <th>Escalated By</th>
+                                <th>Timestamp</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="escalationsTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- Modal 1: Create Ticket (Customer Only) -->
+    <div id="modalCreateTicket" class="modal-overlay hidden" onclick="closeModalOnBackdrop(event, 'modalCreateTicket')">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <div>
+                    <h3>Create New Support Ticket</h3>
+                    <p class="modal-sub">Submit an issue with automatic SLA timer calculation</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('modalCreateTicket')">&times;</button>
+            </div>
+            <form id="createTicketForm" onsubmit="handleCreateTicket(event)">
+                <div class="form-group">
+                    <label for="ticketTitle">Ticket Title</label>
+                    <input type="text" id="ticketTitle" placeholder="Brief summary of the issue" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="ticketCategory">Category</label>
+                        <select id="ticketCategory" required>
+                            <option value="Technical Issue">Technical Issue</option>
+                            <option value="Billing & Invoicing">Billing & Invoicing</option>
+                            <option value="Account Access">Account Access</option>
+                            <option value="Feature Request">Feature Request</option>
+                            <option value="Infrastructure Outage">Infrastructure Outage</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="ticketPriority">Priority (Auto-Sets SLA)</label>
+                        <select id="ticketPriority" required onchange="updateSlaBadgeNotice()">
+                            <option value="LOW">LOW (72 Hours SLA)</option>
+                            <option value="MEDIUM" selected>MEDIUM (24 Hours SLA)</option>
+                            <option value="HIGH">HIGH (12 Hours SLA)</option>
+                            <option value="CRITICAL">CRITICAL (4 Hours SLA)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="sla-notice" id="slaNoticeBox">
+                    <span>⚡ Guaranteed First-Resolution SLA Target: <strong id="slaNoticeHours">24 Hours</strong></span>
+                </div>
+                <div class="form-group">
+                    <label for="ticketDescription">Detailed Description</label>
+                    <textarea id="ticketDescription" rows="4" placeholder="Describe the steps to reproduce, error messages, and context..." required></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('modalCreateTicket')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: Ticket Details, Comments & Workflows -->
+    <div id="modalTicketDetail" class="modal-overlay hidden" onclick="closeModalOnBackdrop(event, 'modalTicketDetail')">
+        <div class="modal-sheet modal-lg">
+            <div class="modal-header">
+                <div>
+                    <div class="ticket-modal-id-row">
+                        <span class="ticket-id" id="detailTicketId">#0</span>
+                        <span class="badge" id="detailTicketStatus">STATUS</span>
+                        <span class="badge" id="detailTicketPriority">PRIORITY</span>
+                        <span class="category-tag" id="detailTicketCategory">CATEGORY</span>
+                    </div>
+                    <h2 class="modal-title" id="detailTicketTitle">Ticket Title</h2>
+                </div>
+                <button class="modal-close" onclick="closeModal('modalTicketDetail')">&times;</button>
+            </div>
+
+            <div class="modal-body-columns">
+                <!-- Left: Ticket Information & Comments -->
+                <div class="modal-col-main">
+                    <div class="meta-strip">
+                        <div>
+                            <span class="meta-label">Submitted by</span>
+                            <span class="meta-val" id="detailCreatorName">-</span>
+                        </div>
+                        <div>
+                            <span class="meta-label">Assigned Agent</span>
+                            <span class="meta-val" id="detailAgentName">Unassigned</span>
+                        </div>
+                        <div>
+                            <span class="meta-label">SLA Resolution Target</span>
+                            <span class="meta-val sla-countdown" id="detailSlaDeadline">-</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-description-box">
+                        <span class="meta-label">Description</span>
+                        <p id="detailDescriptionText"></p>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <div class="comments-section">
+                        <div class="comments-header">
+                            <h4>Discussion & Notes (<span id="commentsCountLabel">0</span>)</h4>
+                        </div>
+
+                        <div class="comments-list" id="commentsListContainer">
+                            <!-- Dynamic Comments -->
+                        </div>
+
+                        <!-- Add Comment Box -->
+                        <form id="addCommentForm" onsubmit="handleAddComment(event)">
+                            <div class="form-group">
+                                <textarea id="commentContent" rows="2" placeholder="Write a response or note..." required></textarea>
+                            </div>
+                            <div class="comment-action-row">
+                                <label class="checkbox-label" id="internalNoteCheckboxWrap">
+                                    <input type="checkbox" id="commentIsInternal">
+                                    <span>🔒 Internal Note (Only visible to Support & Supervisors)</span>
+                                </label>
+                                <button type="submit" class="btn btn-primary btn-sm">Post Comment</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Right: Workflow Actions & Escalation -->
+                <div class="modal-col-side">
+                    <!-- Status State Machine Transition -->
+                    <div class="side-panel supervisor-agent-only">
+                        <h4>Update Ticket Status</h4>
+                        <p class="panel-sub">Adheres to strict transition lifecycle rules</p>
+                        <div class="form-group">
+                            <select id="updateStatusSelect">
+                                <option value="OPEN">OPEN</option>
+                                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                                <option value="ESCALATED">ESCALATED</option>
+                                <option value="RESOLVED">RESOLVED</option>
+                                <option value="CLOSED">CLOSED</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-outline btn-block" onclick="handleUpdateStatus()">Apply Status</button>
+                    </div>
+
+                    <!-- Assignment Controls (Supervisor) -->
+                    <div class="side-panel supervisor-only">
+                        <h4>Ticket Assignment</h4>
+                        <div class="assignment-actions">
+                            <button class="btn btn-secondary btn-block" onclick="openAssignModal(currentSelectedTicketId)">
+                                <span>Assign to Agent</span>
+                            </button>
+                            <button class="btn btn-outline btn-block" onclick="handleAutoAssign(currentSelectedTicketId)">
+                                <span>⚡ Smart Auto-Assign</span>
+                            </button>
+                            <button class="btn btn-outline btn-block text-danger" onclick="handleUnassign(currentSelectedTicketId)">
+                                <span>Unassign</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Escalation Trigger (Agents & Supervisors) -->
+                    <div class="side-panel supervisor-agent-only">
+                        <h4>Escalation Engine</h4>
+                        <p class="panel-sub">Bump priority & mark for immediate escalation</p>
+                        <button class="btn btn-danger btn-block" onclick="openEscalateModal(currentSelectedTicketId)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+                            <span>Escalate Ticket</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Assign Agent (Supervisor Only) -->
+    <div id="modalAssignAgent" class="modal-overlay hidden" onclick="closeModalOnBackdrop(event, 'modalAssignAgent')">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <div>
+                    <h3>Assign Support Agent</h3>
+                    <p class="modal-sub">Assign this ticket to an available agent with capacity</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('modalAssignAgent')">&times;</button>
+            </div>
+            <form onsubmit="handleManualAssign(event)">
+                <div class="form-group">
+                    <label for="assignAgentSelect">Select Agent</label>
+                    <select id="assignAgentSelect" required>
+                        <!-- Dynamic Agents Options with capacity indicators -->
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('modalAssignAgent')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm Assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 4: Escalate Ticket (Supervisor & Agent) -->
+    <div id="modalEscalateTicket" class="modal-overlay hidden" onclick="closeModalOnBackdrop(event, 'modalEscalateTicket')">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <div>
+                    <h3>Escalate Ticket</h3>
+                    <p class="modal-sub">Triggers priority escalation and supervisor notification</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('modalEscalateTicket')">&times;</button>
+            </div>
+            <form onsubmit="handleSubmitEscalation(event)">
+                <div class="form-group">
+                    <label for="escalationReason">Reason for Escalation (Max 500 chars)</label>
+                    <textarea id="escalationReason" rows="3" maxlength="500" placeholder="Explain the blocker, SLA hazard, or specialized intervention required..." required></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('modalEscalateTicket')">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Submit Escalation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js?v=2"></script>
+</body>
+</html>
