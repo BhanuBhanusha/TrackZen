@@ -4,11 +4,9 @@
  */
 
 // Application API Endpoint (Auto-detects localhost vs Cloud/Render, or can be set via localStorage.setItem('trackzen_api_url', 'https://...'))
-const API_BASE = window.TRACKZEN_API_BASE 
-    || localStorage.getItem('trackzen_api_url') 
-    || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://localhost:8080/api' 
-        : 'https://YOUR_RENDER_BACKEND_URL.onrender.com/api');
+const API_BASE = window.TRACKZEN_API_BASE
+    || localStorage.getItem('trackzen_api_url')
+    || 'https://trackzen-backend-y8wx.onrender.com/api';
 
 // Application State
 let currentUser = null;
