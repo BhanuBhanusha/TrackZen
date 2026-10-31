@@ -310,6 +310,45 @@ function logout() {
 }
 
 /* ==========================================================================
+   Role-Based Authorization & Visibility Filtering
+   ========================================================================== */
+
+function filterTicketsByRole(tickets) {
+    if (!tickets || !Array.isArray(tickets)) return [];
+    if (!currentUser) return [];
+
+    const role = currentUser.role;
+    const myName = (currentUser.fullName || '').trim().toLowerCase();
+    const myEmail = (currentUser.email || '').trim().toLowerCase();
+    const myId = currentUser.id ? Number(currentUser.id) : null;
+
+    if (role === 'ROLE_SUPERVISOR') {
+        // Supervisor has full visibility across all tickets
+        return tickets;
+    }
+
+    if (role === 'ROLE_SUPPORT_AGENT') {
+        // Support agent can ONLY view tickets assigned to them
+        return tickets.filter(t => {
+            if (!t.assignedAgentName) return false;
+            return t.assignedAgentName.trim().toLowerCase() === myName;
+        });
+    }
+
+    if (role === 'ROLE_CUSTOMER') {
+        // Customer can ONLY view their own tickets (owner)
+        return tickets.filter(t => {
+            const matchName = t.creatorName && t.creatorName.trim().toLowerCase() === myName;
+            const matchEmail = t.creatorEmail && t.creatorEmail.trim().toLowerCase() === myEmail;
+            const matchId = myId && t.creatorId && Number(t.creatorId) === myId;
+            return Boolean(matchName || matchEmail || matchId);
+        });
+    }
+
+    return [];
+}
+
+/* ==========================================================================
    Navigation & View Routing
    ========================================================================== */
 
@@ -325,16 +364,23 @@ function switchNavView(viewName) {
         }
     });
 
-    // Hide all view sections
-    document.getElementById('viewTickets').classList.add('hidden');
-    document.getElementById('viewSlaRisk').classList.add('hidden');
-    document.getElementById('viewAgents').classList.add('hidden');
-    document.getElementById('viewEscalations').classList.add('hidden');
+    // Hide ALL view sections to prevent bleeding or overlapping
+    const viewIds = ['viewDashboard', 'viewTickets', 'viewSlaRisk', 'viewAgents', 'viewEscalations'];
+    viewIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
 
     const titleEl = document.getElementById('viewHeaderTitle');
     const descEl = document.getElementById('viewHeaderDesc');
 
-    if (viewName === 'tickets') {
+    if (viewName === 'dashboard') {
+        const dashEl = document.getElementById('viewDashboard');
+        if (dashEl) dashEl.classList.remove('hidden');
+        titleEl.textContent = 'Operational Dashboard';
+        descEl.textContent = 'High-level metrics, active SLA tracking, and recent activity';
+        loadDashboard();
+    } else if (viewName === 'tickets') {
         document.getElementById('viewTickets').classList.remove('hidden');
         titleEl.textContent = 'Support Tickets Hub';
         descEl.textContent = 'Real-time overview of customer tickets, priorities, and workflow statuses';
@@ -377,6 +423,37 @@ function refreshCurrentView() {
 }
 
 /* ==========================================================================
+   Dashboard Overview
+   ========================================================================== */
+
+async function loadDashboard() {
+    const listEl = document.getElementById('dashboardRecentTicketsList');
+    const emptyEl = document.getElementById('dashboardEmptyState');
+
+    try {
+        const rawTickets = await apiRequest('/tickets');
+        allTickets = filterTicketsByRole(rawTickets || []);
+
+        if (currentUser && currentUser.role !== 'ROLE_SUPERVISOR') {
+            updateStatsDisplay(calculateStatsFromTickets(allTickets));
+        }
+
+        if (listEl) {
+            listEl.innerHTML = '';
+            if (allTickets.length === 0) {
+                if (emptyEl) emptyEl.classList.remove('hidden');
+            } else {
+                if (emptyEl) emptyEl.classList.add('hidden');
+                const recent = allTickets.slice(0, 4);
+                renderTickets(recent, listEl, emptyEl);
+            }
+        }
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+/* ==========================================================================
    Statistics
    ========================================================================== */
 
@@ -414,8 +491,8 @@ async function loadStats() {
         } else if (currentUser && (currentUser.role === 'ROLE_SUPPORT_AGENT' || currentUser.role === 'ROLE_CUSTOMER')) {
             if (!allTickets || allTickets.length === 0) {
                 try {
-                    const tickets = await apiRequest('/tickets');
-                    allTickets = tickets || [];
+                    const raw = await apiRequest('/tickets');
+                    allTickets = filterTicketsByRole(raw || []);
                 } catch (_) {}
             }
             stats = calculateStatsFromTickets(allTickets);
@@ -427,10 +504,8 @@ async function loadStats() {
 
         // Count SLA risk
         if (currentUser && currentUser.role !== 'ROLE_CUSTOMER') {
-            let slaTickets = await apiRequest('/tickets/sla-risk') || [];
-            if (currentUser.role === 'ROLE_SUPPORT_AGENT') {
-                slaTickets = slaTickets.filter(t => t.assignedAgentName === currentUser.fullName);
-            }
+            let rawSla = await apiRequest('/tickets/sla-risk') || [];
+            let slaTickets = filterTicketsByRole(rawSla);
             const count = (slaTickets && slaTickets.length) ? slaTickets.length : 0;
             const slaNavCount = document.getElementById('slaRiskCountNav');
             if (slaNavCount) slaNavCount.textContent = count;
@@ -449,8 +524,8 @@ async function loadTickets() {
     const emptyEl = document.getElementById('ticketsEmptyState');
 
     try {
-        const tickets = await apiRequest('/tickets');
-        allTickets = tickets || [];
+        const rawTickets = await apiRequest('/tickets');
+        allTickets = filterTicketsByRole(rawTickets || []);
         renderTickets(allTickets, listEl, emptyEl);
         if (currentUser && (currentUser.role === 'ROLE_CUSTOMER' || currentUser.role === 'ROLE_SUPPORT_AGENT')) {
             updateStatsDisplay(calculateStatsFromTickets(allTickets));
@@ -537,10 +612,8 @@ async function loadSlaRiskTickets() {
     const emptyEl = document.getElementById('slaRiskEmptyState');
 
     try {
-        let tickets = await apiRequest('/tickets/sla-risk') || [];
-        if (currentUser && currentUser.role === 'ROLE_SUPPORT_AGENT') {
-            tickets = tickets.filter(t => t.assignedAgentName === currentUser.fullName);
-        }
+        let rawTickets = await apiRequest('/tickets/sla-risk') || [];
+        let tickets = filterTicketsByRole(rawTickets);
         renderTickets(tickets, listEl, emptyEl);
     } catch (err) {
         showToast(err.message, 'error');
@@ -604,6 +677,25 @@ async function openTicketDetailModal(ticketId) {
     try {
         const ticket = await apiRequest(`/tickets/${ticketId}`);
         if (!ticket) return;
+
+        // Strict role-based authorization check
+        if (currentUser && currentUser.role === 'ROLE_CUSTOMER') {
+            const myName = (currentUser.fullName || '').trim().toLowerCase();
+            const myId = currentUser.id ? Number(currentUser.id) : null;
+            const isOwner = (ticket.creatorName && ticket.creatorName.trim().toLowerCase() === myName) ||
+                            (myId && ticket.creatorId && Number(ticket.creatorId) === myId);
+            if (!isOwner) {
+                showToast('Access denied: You can only view your own tickets', 'error');
+                return;
+            }
+        } else if (currentUser && currentUser.role === 'ROLE_SUPPORT_AGENT') {
+            const myName = (currentUser.fullName || '').trim().toLowerCase();
+            const isAssigned = (ticket.assignedAgentName && ticket.assignedAgentName.trim().toLowerCase() === myName);
+            if (!isAssigned) {
+                showToast('Access denied: You can only view tickets assigned to you', 'error');
+                return;
+            }
+        }
 
         document.getElementById('detailTicketId').textContent = `#${ticket.id}`;
         document.getElementById('detailTicketTitle').textContent = ticket.title;
@@ -760,15 +852,38 @@ async function deleteComment(commentId) {
 
 async function loadAgents() {
     const listEl = document.getElementById('agentsList');
-    listEl.innerHTML = '<span style="color:var(--text-muted);">Loading agent roster...</span>';
+    listEl.innerHTML = '<span style="color:var(--text-muted);font-size:0.9rem;">Loading agent roster...</span>';
 
     try {
         const agents = await apiRequest('/agents/workload');
         allAgents = agents || [];
         listEl.innerHTML = '';
 
+        // Update fleet summary bar metrics
+        const totalAgents = allAgents.length;
+        const availableAgents = allAgents.filter(a => a.isAvailable).length;
+        const totalLoad = allAgents.reduce((sum, a) => sum + (a.currentLoad || 0), 0);
+        const totalCapacity = allAgents.reduce((sum, a) => sum + (a.maxCapacity || 5), 0);
+        const utilization = totalCapacity > 0 ? Math.round((totalLoad / totalCapacity) * 100) : 0;
+
+        const elTotal = document.getElementById('fleetTotalAgents');
+        const elAvail = document.getElementById('fleetAvailableAgents');
+        const elLoad = document.getElementById('fleetTotalLoad');
+        const elUtil = document.getElementById('fleetUtilization');
+
+        if (elTotal) elTotal.textContent = totalAgents;
+        if (elAvail) elAvail.textContent = `${availableAgents} / ${totalAgents}`;
+        if (elLoad) elLoad.textContent = `${totalLoad} / ${totalCapacity}`;
+        if (elUtil) elUtil.textContent = `${utilization}%`;
+
         if (allAgents.length === 0) {
-            listEl.innerHTML = '<div class="empty-state"><h3>No Agents Registered</h3><p>Register an account with role ROLE_SUPPORT_AGENT to populate this list.</p></div>';
+            listEl.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div style="font-size:2.5rem;margin-bottom:12px;">👥</div>
+                    <h3>No Agents Registered</h3>
+                    <p>Register an account with role ROLE_SUPPORT_AGENT to populate this roster.</p>
+                </div>
+            `;
             return;
         }
 
@@ -776,23 +891,35 @@ async function loadAgents() {
             const card = document.createElement('div');
             card.className = 'agent-card';
 
-            const loadPercentage = agent.loadPercentage || 0;
+            const maxCap = agent.maxCapacity || 5;
+            const currLoad = agent.currentLoad || 0;
+            const loadPercentage = agent.loadPercentage !== undefined ? agent.loadPercentage : Math.round((currLoad / maxCap) * 100);
+            
             let barColorClass = 'load-low';
             if (loadPercentage >= 80) barColorClass = 'load-high';
             else if (loadPercentage >= 50) barColorClass = 'load-med';
 
             const statusBadge = agent.isAvailable 
-                ? `<span class="badge badge-status-RESOLVED">AVAILABLE</span>` 
-                : `<span class="badge badge-status-CLOSED">OFFLINE / AWAY</span>`;
+                ? `<span class="badge badge-status-RESOLVED"><span class="status-pulse-dot online"></span>AVAILABLE</span>` 
+                : `<span class="badge badge-status-CLOSED"><span class="status-pulse-dot offline"></span>AWAY</span>`;
 
             card.innerHTML = `
-                <div>
+                <div class="agent-card-content">
                     <div class="agent-card-header">
-                        <div style="display:flex;gap:12px;align-items:center;">
+                        <div class="agent-profile-wrap">
                             <div class="agent-avatar">${(agent.fullName || 'A').charAt(0).toUpperCase()}</div>
                             <div class="agent-info">
-                                <h4>${escapeHtml(agent.fullName || 'Support Agent')}</h4>
-                                <span class="agent-dept">${escapeHtml(agent.department || 'General Support')} • ${escapeHtml(agent.email || '')}</span>
+                                <h4 class="agent-name">${escapeHtml(agent.fullName || 'Support Agent')}</h4>
+                                <div class="agent-meta-tags">
+                                    <span class="agent-dept">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                        ${escapeHtml(agent.department || 'General Support')}
+                                    </span>
+                                    <span class="agent-email">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                        ${escapeHtml(agent.email || '')}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         ${statusBadge}
@@ -800,21 +927,33 @@ async function loadAgents() {
 
                     <div class="agent-workload-wrap">
                         <div class="workload-meta">
-                            <span>Active Workload</span>
-                            <span class="workload-percent">${agent.currentLoad} / ${agent.maxCapacity} (${loadPercentage}%)</span>
+                            <span class="workload-label">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                                Active Workload
+                            </span>
+                            <span class="workload-percent">${currLoad} / ${maxCap} (${loadPercentage}%)</span>
                         </div>
                         <div class="workload-bar-track">
-                            <div class="workload-bar-fill ${barColorClass}" style="width: ${Math.min(100, loadPercentage)}%;"></div>
+                            <div class="workload-bar-fill ${barColorClass}" style="width: ${Math.min(100, Math.max(loadPercentage > 0 ? 6 : 0, loadPercentage))}%;"></div>
+                        </div>
+                        <div class="workload-sub-metrics">
+                            <span class="metric-pill">Max: <strong>${maxCap}</strong></span>
+                            <span class="metric-pill">Assigned: <strong>${currLoad}</strong></span>
+                            <span class="metric-pill">Remaining: <strong>${Math.max(0, maxCap - currLoad)}</strong></span>
                         </div>
                     </div>
                 </div>
 
                 <div class="agent-actions">
-                    <button class="btn btn-outline btn-sm flex-1" onclick="toggleAgentAvailability(${agent.id})">
-                        ${agent.isAvailable ? 'Set Away' : 'Set Available'}
+                    <button class="btn btn-outline btn-sm flex-1 ${agent.isAvailable ? 'btn-set-away' : 'btn-set-available'}" onclick="toggleAgentAvailability(${agent.id})">
+                        ${agent.isAvailable 
+                            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg><span>Set Away</span>` 
+                            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span>Set Available</span>`
+                        }
                     </button>
-                    <button class="btn btn-outline btn-sm flex-1" onclick="recalculateAgentLoad(${agent.id})">
-                        Sync Load
+                    <button class="btn btn-outline btn-sm flex-1" onclick="recalculateAgentLoad(${agent.id})" title="Recompute load from DB assignments">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        <span>Sync Load</span>
                     </button>
                 </div>
             `;
@@ -1024,17 +1163,26 @@ async function handleResolveEscalation(escalationId) {
 }
 
 /* ==========================================================================
-   Modal Helpers & Backdrop
+   Modal Helpers & Backdrop (Lock Background Scrolling)
    ========================================================================== */
 
 function openModal(modalId) {
     const el = document.getElementById(modalId);
-    if (el) el.classList.remove('hidden');
+    if (el) {
+        el.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+    }
 }
 
 function closeModal(modalId) {
     const el = document.getElementById(modalId);
-    if (el) el.classList.add('hidden');
+    if (el) {
+        el.classList.add('hidden');
+        const anyOpen = document.querySelectorAll('.modal-overlay:not(.hidden)').length > 0;
+        if (!anyOpen) {
+            document.body.classList.remove('modal-open');
+        }
+    }
 }
 
 function closeModalOnBackdrop(event, modalId) {
